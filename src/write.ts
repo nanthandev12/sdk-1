@@ -693,6 +693,69 @@ export class DecibelWriteDex extends BaseSDK {
     );
   }
 
+  /**
+   * Update an existing order's parameters including TP/SL.
+   * Pass undefined for tp/sl fields to remove them from the order.
+   * @aptos-labs/ts-sdk treats null/undefined as Move Option::None.
+   */
+  async updateOrder({
+    orderId,
+    marketAddr,
+    price,
+    size,
+    isBuy,
+    timeInForce,
+    isReduceOnly,
+    tpTriggerPrice,
+    tpLimitPrice,
+    slTriggerPrice,
+    slLimitPrice,
+    subaccountAddr,
+    accountOverride,
+  }: {
+    orderId: number | string;
+    marketAddr: string;
+    price: number;
+    size: number;
+    isBuy: boolean;
+    timeInForce: TimeInForce;
+    isReduceOnly: boolean;
+    tpTriggerPrice?: number;
+    tpLimitPrice?: number;
+    slTriggerPrice?: number;
+    slLimitPrice?: number;
+    subaccountAddr?: string;
+    accountOverride?: Account;
+  }) {
+    return await this.sendSubaccountTx(
+      (subaccountAddr) =>
+        this.sendTx(
+          {
+            function: `${this.config.deployment.package}::dex_accounts_entry::update_order_to_subaccount`,
+            typeArguments: [],
+            functionArguments: [
+              subaccountAddr,
+              BigInt(orderId.toString()),
+              marketAddr,
+              price,
+              size,
+              isBuy,
+              timeInForce,
+              isReduceOnly,
+              tpTriggerPrice,
+              tpLimitPrice,
+              slTriggerPrice,
+              slLimitPrice,
+              undefined, // builder_address
+              undefined, // builder_fees
+            ],
+          },
+          accountOverride,
+        ),
+      subaccountAddr,
+    );
+  }
+
   async cancelTwapOrder({
     orderId,
     marketAddr,
