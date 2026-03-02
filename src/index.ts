@@ -1,5 +1,6 @@
 export * from "./admin";
 export * from "./constants";
+export * from "./derivable-account";
 export * from "./fee-pay";
 export * from "./gas/gas-price-manager";
 export * from "./order-event.types";
