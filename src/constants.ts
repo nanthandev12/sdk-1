@@ -57,6 +57,7 @@ export interface DecibelReaderDeps {
 
 export interface Deployment {
   package: string;
+  predepositPackage: string;
   usdc: string;
   testc: string;
   perpEngineGlobal: string;
@@ -65,6 +66,7 @@ export interface Deployment {
 const getDeployment = (pkg: string): Deployment => {
   return {
     package: pkg,
+    predepositPackage: PACKAGE.PREDEPOSIT,
     usdc: getUsdcAddress(pkg).toString(),
     testc: getTestcAddress(pkg).toString(),
     perpEngineGlobal: getPerpEngineGlobalAddress(pkg).toString(),
@@ -84,6 +86,7 @@ export const NETNA_CONFIG: DecibelConfig = {
 
 export const TESTNET_DEPLOYMENT: Deployment = {
   package: PACKAGE.TESTNET,
+  predepositPackage: PACKAGE.PREDEPOSIT,
   usdc: getUsdcAddress(PACKAGE.TESTNET).toString(),
   testc: getTestcAddress(PACKAGE.TESTNET).toString(),
   perpEngineGlobal: getPerpEngineGlobalAddress(PACKAGE.TESTNET).toString(),
@@ -102,27 +105,9 @@ export const TESTNET_CONFIG: DecibelConfig = {
 
 const MAINNET_USDC = "0xbae207659db88bea0cbead6da0ed00aac12edcdda169e591cd41c94180b46f3b";
 
-export const PREDEPOSIT_DEPLOYMENT: Deployment = {
-  package: PACKAGE.PREDEPOSIT,
-  usdc: MAINNET_USDC,
-  testc: getTestcAddress(PACKAGE.PREDEPOSIT).toString(),
-  perpEngineGlobal: getPerpEngineGlobalAddress(PACKAGE.PREDEPOSIT).toString(),
-};
-
-export const PREDEPOSIT_CONFIG: DecibelConfig = {
-  network: Network.MAINNET,
-  fullnodeUrl: "https://api.mainnet.aptoslabs.com/v1",
-  tradingHttpUrl:
-    "https://api-http-prod-mainnet-predeposit-asia-northeast1-51995220960.asia-northeast1.run.app",
-  tradingWsUrl: "wss://api.mainnet.aptoslabs.com/decibel/ws",
-  gasStationUrl: "https://api.mainnet.aptoslabs.com/gs/v1",
-  deployment: PREDEPOSIT_DEPLOYMENT,
-  chainId: 1,
-  ...RELEASE_CONFIGS.PREDEPOSIT,
-};
-
 export const MAINNET_DEPLOYMENT: Deployment = {
   package: PACKAGE.MAINNET,
+  predepositPackage: PACKAGE.PREDEPOSIT,
   usdc: MAINNET_USDC,
   testc: getTestcAddress(PACKAGE.MAINNET).toString(),
   perpEngineGlobal: getPerpEngineGlobalAddress(PACKAGE.MAINNET).toString(),
@@ -163,7 +148,6 @@ export const NAMED_CONFIGS: Record<string, DecibelConfig | undefined> = {
   local: LOCAL_CONFIG,
   docker: DOCKER_CONFIG,
   testnet: TESTNET_CONFIG,
-  predeposit: PREDEPOSIT_CONFIG,
   mainnet: MAINNET_CONFIG,
 };
 

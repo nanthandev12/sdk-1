@@ -37,10 +37,6 @@ const DOCKER_RELEASE_CONFIG: ReleaseConfig = {
   compatVersion: DEFAULT_COMPAT_VERSION,
 };
 
-const PREDEPOSIT_RELEASE_CONFIG: ReleaseConfig = {
-  compatVersion: CompatVersion.V0_4,
-};
-
 const MAINNET_RELEASE_CONFIG: ReleaseConfig = {
   compatVersion: CompatVersion.V0_4,
 };
@@ -50,6 +46,5 @@ export const RELEASE_CONFIGS = {
   TESTNET: TESTNET_RELEASE_CONFIG,
   LOCAL: LOCAL_RELEASE_CONFIG,
   DOCKER: DOCKER_RELEASE_CONFIG,
-  PREDEPOSIT: PREDEPOSIT_RELEASE_CONFIG,
   MAINNET: MAINNET_RELEASE_CONFIG,
 };
