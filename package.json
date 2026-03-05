@@ -31,7 +31,6 @@
   "peerDependencies": {
     "@aptos-labs/ts-sdk": "^5.2.1",
     "@types/ws": "^8.18.0",
-    "ethers": "^6.0.0",
     "zod": "^3.25.62"
   },
   "publishConfig": {

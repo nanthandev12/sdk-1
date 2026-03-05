@@ -6,7 +6,8 @@ import {
   Serializable,
   Serializer,
 } from "@aptos-labs/ts-sdk";
-import { getAddress } from "ethers";
+
+import { toChecksumAddress } from "./eip55";
 
 const DOMAIN = "app.decibel.trade";
 const ETH_AUTH_FN = "0x1::ethereum_derivable_account::authenticate";
@@ -50,7 +51,7 @@ function deriveAptosAddress(authFn: string, identity: string): string {
  * The ETH address is checksummed via EIP-55 before derivation.
  */
 export function deriveAptosFromEth(ethAddress: string): string {
-  return deriveAptosAddress(ETH_AUTH_FN, getAddress(ethAddress));
+  return deriveAptosAddress(ETH_AUTH_FN, toChecksumAddress(ethAddress));
 }
 
 /**

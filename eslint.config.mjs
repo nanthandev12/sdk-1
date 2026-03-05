@@ -22,4 +22,11 @@ export default tseslint.config(
     },
   },
   baseConfig,
+  {
+    files: ["src/eip55.ts"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+    },
+  },
 );
