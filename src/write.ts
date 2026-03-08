@@ -2,7 +2,14 @@ import { Account, AccountAddress, CommittedTransactionResponse } from "@aptos-la
 
 import { BaseSDK, Options } from "./base";
 import { DecibelConfig } from "./constants";
-import { OrderEvent, PlaceOrderResult, TwapEvent } from "./order-event.types";
+import {
+  CancelBulkOrderResult,
+  OrderEvent,
+  PlaceBulkOrdersResult,
+  PlaceOrderResult,
+  ParsedBulkOrderEvent,
+  TwapEvent,
+} from "./order-event.types";
 import { OrderStatusClient } from "./order-status";
 import {
   ActivateVaultArgs,
@@ -81,6 +88,106 @@ export class DecibelWriteDex extends BaseSDK {
       return null;
     } catch (error) {
       console.error("Error extracting order_id from transaction:", error);
+      return null;
+    }
+  }
+
+  private toStringValue(value: unknown): string | undefined {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "bigint") {
+      return value.toString();
+    }
+    return undefined;
+  }
+
+  private extractBulkOrderId(value: unknown): string | undefined {
+    const direct = this.toStringValue(value);
+    if (direct) {
+      return direct;
+    }
+
+    if (value && typeof value === "object" && "order_id" in value) {
+      return this.toStringValue((value as { order_id?: unknown }).order_id);
+    }
+
+    return undefined;
+  }
+
+  private extractBulkLevels(prices: unknown, sizes: unknown): Array<{ price: string; size: string }> {
+    if (!Array.isArray(prices) || !Array.isArray(sizes)) {
+      return [];
+    }
+
+    const levels: Array<{ price: string; size: string }> = [];
+    const limit = Math.min(prices.length, sizes.length);
+    for (let i = 0; i < limit; i++) {
+      const price = this.toStringValue(prices[i]);
+      const size = this.toStringValue(sizes[i]);
+      if (price !== undefined && size !== undefined) {
+        levels.push({ price, size });
+      }
+    }
+
+    return levels;
+  }
+
+  /**
+   * Extract BulkOrderPlacedEvent/BulkOrderModifiedEvent details from transaction response
+   */
+  private extractBulkOrderEventFromTransaction(
+    txResponse: CommittedTransactionResponse,
+    subaccountAddr?: string,
+  ): ParsedBulkOrderEvent | null {
+    const placedEventType = "market_types::BulkOrderPlacedEvent";
+    const modifiedEventType = "market_types::BulkOrderModifiedEvent";
+
+    try {
+      if (!("events" in txResponse) || !Array.isArray(txResponse.events)) {
+        return null;
+      }
+
+      const userAddress = (subaccountAddr ?? this.account.accountAddress.toString()).toLowerCase();
+
+      for (const event of txResponse.events) {
+        if (
+          !event.type.includes(placedEventType) &&
+          !event.type.includes(modifiedEventType)
+        ) {
+          continue;
+        }
+
+        const data = event.data as Record<string, unknown>;
+        const eventUser = this.toStringValue(data.user)?.toLowerCase();
+        if (eventUser && eventUser !== userAddress) {
+          continue;
+        }
+
+        const sequenceNumber = this.toStringValue(data.sequence_number);
+        if (!sequenceNumber) {
+          continue;
+        }
+
+        return {
+          eventType: event.type.includes(placedEventType)
+            ? "BulkOrderPlacedEvent"
+            : "BulkOrderModifiedEvent",
+          sequenceNumber,
+          previousSequenceNumber: this.toStringValue(data.previous_seq_num),
+          market: this.toStringValue(data.market),
+          user: this.toStringValue(data.user),
+          orderId: this.extractBulkOrderId(data.order_id),
+          placedBids: this.extractBulkLevels(data.bid_prices, data.bid_sizes),
+          placedAsks: this.extractBulkLevels(data.ask_prices, data.ask_sizes),
+          cancelledBids: this.extractBulkLevels(data.cancelled_bid_prices, data.cancelled_bid_sizes),
+          cancelledAsks: this.extractBulkLevels(data.cancelled_ask_prices, data.cancelled_ask_sizes),
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error extracting bulk order event from transaction:", error);
       return null;
     }
   }
@@ -484,7 +591,7 @@ export class DecibelWriteDex extends BaseSDK {
      * account.  If not provided, the default constructor account will be used
      */
     accountOverride?: Account;
-  } & ({ marketName: string } | { marketAddr: string })) {
+  } & ({ marketName: string } | { marketAddr: string })): Promise<PlaceBulkOrdersResult> {
     const marketAddr =
       "marketName" in args
         ? getMarketAddr(args.marketName, this.config.deployment.perpEngineGlobal)
@@ -498,28 +605,55 @@ export class DecibelWriteDex extends BaseSDK {
     const builderFeesU64 =
       builderFees === undefined || builderFees === null ? null : BigInt(builderFees.toString());
 
-    return await this.sendSubaccountTx(
-      (subaccountAddr) =>
-        this.sendTx(
-          {
-            function: `${this.config.deployment.package}::dex_accounts_entry::place_bulk_orders_to_subaccount`,
-            typeArguments: [],
-            functionArguments: [
-              subaccountAddr,
-              marketAddr.toString(),
-              sequenceNumberU64,
-              bidPricesU64,
-              bidSizesU64,
-              askPricesU64,
-              askSizesU64,
-              builderAddress ?? null,
-              builderFeesU64,
-            ],
-          },
-          accountOverride,
-        ),
-      subaccountAddr,
-    );
+    try {
+      const txResponse = await this.sendSubaccountTx(
+        (subaccountAddr) =>
+          this.sendTx(
+            {
+              function: `${this.config.deployment.package}::dex_accounts_entry::place_bulk_orders_to_subaccount`,
+              typeArguments: [],
+              functionArguments: [
+                subaccountAddr,
+                marketAddr.toString(),
+                sequenceNumberU64,
+                bidPricesU64,
+                bidSizesU64,
+                askPricesU64,
+                askSizesU64,
+                builderAddress ?? null,
+                builderFeesU64,
+              ],
+            },
+            accountOverride,
+          ),
+        subaccountAddr,
+      );
+
+      const parsedEvent = this.extractBulkOrderEventFromTransaction(txResponse, subaccountAddr);
+
+      return {
+        success: true,
+        hash: txResponse.hash,
+        transactionHash: txResponse.hash,
+        eventType: parsedEvent?.eventType,
+        sequenceNumber: parsedEvent?.sequenceNumber ?? sequenceNumberU64.toString(),
+        previousSequenceNumber: parsedEvent?.previousSequenceNumber,
+        market: parsedEvent?.market,
+        user: parsedEvent?.user,
+        orderId: parsedEvent?.orderId,
+        placedBids: parsedEvent?.placedBids ?? [],
+        placedAsks: parsedEvent?.placedAsks ?? [],
+        cancelledBids: parsedEvent?.cancelledBids ?? [],
+        cancelledAsks: parsedEvent?.cancelledAsks ?? [],
+        parsedEvent: parsedEvent ?? undefined,
+      };
+    } catch (error) {
+      console.error("Error placing bulk orders:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   }
 
   async cancelBulkOrder({
@@ -533,24 +667,51 @@ export class DecibelWriteDex extends BaseSDK {
      * account.  If not provided, the default constructor account will be used
      */
     accountOverride?: Account;
-  } & ({ marketName: string } | { marketAddr: string })) {
+  } & ({ marketName: string } | { marketAddr: string })): Promise<CancelBulkOrderResult> {
     const marketAddr =
       "marketName" in args
         ? getMarketAddr(args.marketName, this.config.deployment.perpEngineGlobal)
         : args.marketAddr;
 
-    return await this.sendSubaccountTx(
-      (subaccountAddr) =>
-        this.sendTx(
-          {
-            function: `${this.config.deployment.package}::dex_accounts_entry::cancel_bulk_order_to_subaccount`,
-            typeArguments: [],
-            functionArguments: [subaccountAddr, marketAddr.toString()],
-          },
-          accountOverride,
-        ),
-      subaccountAddr,
-    );
+    try {
+      const txResponse = await this.sendSubaccountTx(
+        (subaccountAddr) =>
+          this.sendTx(
+            {
+              function: `${this.config.deployment.package}::dex_accounts_entry::cancel_bulk_order_to_subaccount`,
+              typeArguments: [],
+              functionArguments: [subaccountAddr, marketAddr.toString()],
+            },
+            accountOverride,
+          ),
+        subaccountAddr,
+      );
+
+      const parsedEvent = this.extractBulkOrderEventFromTransaction(txResponse, subaccountAddr);
+
+      return {
+        success: true,
+        hash: txResponse.hash,
+        transactionHash: txResponse.hash,
+        eventType: parsedEvent?.eventType,
+        sequenceNumber: parsedEvent?.sequenceNumber,
+        previousSequenceNumber: parsedEvent?.previousSequenceNumber,
+        market: parsedEvent?.market,
+        user: parsedEvent?.user,
+        orderId: parsedEvent?.orderId,
+        placedBids: parsedEvent?.placedBids ?? [],
+        placedAsks: parsedEvent?.placedAsks ?? [],
+        cancelledBids: parsedEvent?.cancelledBids ?? [],
+        cancelledAsks: parsedEvent?.cancelledAsks ?? [],
+        parsedEvent: parsedEvent ?? undefined,
+      };
+    } catch (error) {
+      console.error("Error canceling bulk orders:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   }
 
   async delegateTradingToForSubaccount({

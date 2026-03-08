@@ -54,6 +54,60 @@ export interface TwapEvent {
   client_order_id: OrderEventClientOrderId;
 }
 
+export interface BulkOrderLevel {
+  price: string;
+  size: string;
+}
+
+export type BulkOrderEventType = "BulkOrderPlacedEvent" | "BulkOrderModifiedEvent";
+
+export interface ParsedBulkOrderEvent {
+  eventType: BulkOrderEventType;
+  sequenceNumber: string;
+  previousSequenceNumber?: string;
+  market?: string;
+  user?: string;
+  orderId?: string;
+  placedBids: BulkOrderLevel[];
+  placedAsks: BulkOrderLevel[];
+  cancelledBids: BulkOrderLevel[];
+  cancelledAsks: BulkOrderLevel[];
+}
+
+interface BulkOrderTransactionSummary {
+  hash: string;
+  transactionHash: string;
+  eventType?: BulkOrderEventType;
+  sequenceNumber?: string;
+  previousSequenceNumber?: string;
+  market?: string;
+  user?: string;
+  orderId?: string;
+  placedBids: BulkOrderLevel[];
+  placedAsks: BulkOrderLevel[];
+  cancelledBids: BulkOrderLevel[];
+  cancelledAsks: BulkOrderLevel[];
+  parsedEvent?: ParsedBulkOrderEvent;
+}
+
+export type PlaceBulkOrdersResult =
+  | ({
+      success: true;
+    } & BulkOrderTransactionSummary)
+  | {
+      success: false;
+      error: string;
+    };
+
+export type CancelBulkOrderResult =
+  | ({
+      success: true;
+    } & BulkOrderTransactionSummary)
+  | {
+      success: false;
+      error: string;
+    };
+
 export type PlaceOrderResult =
   | {
       success: true;
