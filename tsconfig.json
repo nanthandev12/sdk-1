@@ -1,8 +1,9 @@
 {
   "extends": "@decibeltrade/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "module": "commonjs"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "src/abi/generate-abis.ts"]
 }

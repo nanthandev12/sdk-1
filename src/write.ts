@@ -459,6 +459,69 @@ export class DecibelWriteDex extends BaseSDK {
     );
   }
 
+  async placeBulkOrders({
+    sequenceNumber,
+    bidPrices,
+    bidSizes,
+    askPrices,
+    askSizes,
+    builderAddress,
+    builderFees,
+    subaccountAddr,
+    accountOverride,
+    ...args
+  }: {
+    sequenceNumber: number | string | bigint;
+    bidPrices: Array<number | string | bigint>;
+    bidSizes: Array<number | string | bigint>;
+    askPrices: Array<number | string | bigint>;
+    askSizes: Array<number | string | bigint>;
+    builderAddress?: string | null;
+    builderFees?: number | string | bigint | null;
+    subaccountAddr?: string;
+    /**
+     * Optional account to use for the transaction. Primarily set as the session
+     * account.  If not provided, the default constructor account will be used
+     */
+    accountOverride?: Account;
+  } & ({ marketName: string } | { marketAddr: string })) {
+    const marketAddr =
+      "marketName" in args
+        ? getMarketAddr(args.marketName, this.config.deployment.perpEngineGlobal)
+        : args.marketAddr;
+
+    const sequenceNumberU64 = BigInt(sequenceNumber.toString());
+    const bidPricesU64 = bidPrices.map((value) => BigInt(value.toString()));
+    const bidSizesU64 = bidSizes.map((value) => BigInt(value.toString()));
+    const askPricesU64 = askPrices.map((value) => BigInt(value.toString()));
+    const askSizesU64 = askSizes.map((value) => BigInt(value.toString()));
+    const builderFeesU64 =
+      builderFees === undefined || builderFees === null ? null : BigInt(builderFees.toString());
+
+    return await this.sendSubaccountTx(
+      (subaccountAddr) =>
+        this.sendTx(
+          {
+            function: `${this.config.deployment.package}::dex_accounts_entry::place_bulk_orders_to_subaccount`,
+            typeArguments: [],
+            functionArguments: [
+              subaccountAddr,
+              marketAddr.toString(),
+              sequenceNumberU64,
+              bidPricesU64,
+              bidSizesU64,
+              askPricesU64,
+              askSizesU64,
+              builderAddress ?? null,
+              builderFeesU64,
+            ],
+          },
+          accountOverride,
+        ),
+      subaccountAddr,
+    );
+  }
+
   async cancelBulkOrder({
     subaccountAddr,
     accountOverride,
