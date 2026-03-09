@@ -24,7 +24,11 @@ export const UserBulkOrderSchema = z.object({
 export const UserBulkOrdersSchema = z.array(UserBulkOrderSchema);
 
 export const UserBulkOrdersWsMessageSchema = z.object({
-  bulk_orders: z.array(UserBulkOrderSchema),
+  bulk_order: z.object({
+    status: z.string(),
+    details: z.string(),
+    bulk_order: UserBulkOrderSchema,
+  }),
 });
 
 export type UserBulkOrder = z.infer<typeof UserBulkOrderSchema>;
