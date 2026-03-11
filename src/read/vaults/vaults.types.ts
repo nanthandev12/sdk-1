@@ -62,6 +62,13 @@ export interface VaultSharePriceRequestArgs extends BaseRequestArgs {
 }
 
 /**
+ * Arguments for fetching max synchronous (instant) redemption amount for a vault
+ */
+export interface MaxSynchronousRedemptionRequestArgs {
+  vaultAddress: string;
+}
+
+/**
  * Schema for a vault in the protocol
  * Represents both protocol-wide vaults and user-managed vaults
  */
