@@ -175,6 +175,18 @@ export class DecibelWriteDex extends BaseSDK {
     );
   }
 
+  async withdrawNonCollateral(assetAddr: string, amount: number, subaccountAddr?: string) {
+    return await this.sendSubaccountTx(
+      (subaccountAddr) =>
+        this.sendTx({
+          function: `${this.config.deployment.package}::dex_accounts_entry::withdraw_from_non_collateral`,
+          typeArguments: [],
+          functionArguments: [subaccountAddr, assetAddr, amount],
+        }),
+      subaccountAddr,
+    );
+  }
+
   async configureUserSettingsForMarket({
     marketAddr,
     subaccountAddr,
