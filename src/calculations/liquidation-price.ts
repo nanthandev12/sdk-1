@@ -134,8 +134,14 @@ export function calculateLiquidationPrice(input: LiquidationPriceInput): number 
             : (currentPosSize * currentEntryPrice + orderSize * executionPrice) / newPosSize;
     const newPositionPnl = newPosSize * (markPrice - newEntryPrice);
 
-    // Adjust equity by the PnL difference caused by the simulated order
-    const pnlDifference = newPositionPnl - oldPositionPnl;
+    // When the order reduces or flips the position, the closed portion realizes PnL
+    // at executionPrice. This realized PnL is added to collateral.
+    const isReducing = currentPosSize !== 0 && Math.sign(currentPosSize) !== Math.sign(orderSize);
+    const closedSize = isReducing ? Math.min(Math.abs(orderSize), Math.abs(currentPosSize)) : 0;
+    const realizedPnl =
+      closedSize * (executionPrice - currentEntryPrice) * Math.sign(currentPosSize);
+
+    const pnlDifference = realizedPnl + newPositionPnl - oldPositionPnl;
     accountEquityAdjusted += pnlDifference;
   }
 

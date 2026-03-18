@@ -74,10 +74,11 @@ describe("calculateLiquidationPrice", () => {
 
   it("uses execution price as entry for direction flip (long to short)", () => {
     // Existing +3 @95, order -8 @105 → net -5 (short), newEntry=105 (flip)
-    // oldPnl=3*(100-95)=15, newPnl=-5*(100-105)=25, pnlDiff=10
-    // equityAdj=100+10=110, MM=25, buffer=85
-    // leverageFactor=1.05, priceBuffer=floor(85/(5*1.05)*1e6)/1e6=16.190476
-    // liq=100+16.190476=116.190476
+    // closedSize=3, realizedPnl=3*(105-95)*1=30
+    // oldPnl=3*(100-95)=15, newPnl=-5*(100-105)=25
+    // pnlDiff=30+25-15=40, equityAdj=100+40=140, MM=25, buffer=115
+    // leverageFactor=1.05, priceBuffer=floor(115/(5*1.05)*1e6)/1e6=21.904761
+    // liq=100+21.904761=121.904761
     const result = calculateLiquidationPrice(
       makeInput({
         positions: [{ marketAddr: "0xBTC", size: 3, entryPrice: 95 }],
@@ -85,15 +86,16 @@ describe("calculateLiquidationPrice", () => {
         executionPrice: 105,
       }),
     );
-    expect(result).toBeCloseTo(116.190476, 5);
+    expect(result).toBeCloseTo(121.904761, 5);
   });
 
   it("uses execution price as entry for direction flip (short to long)", () => {
     // Existing -3 @105, order +8 @95 → net +5 (long), newEntry=95 (flip)
-    // oldPnl=-3*(100-105)=15, newPnl=5*(100-95)=25, pnlDiff=10
-    // equityAdj=100+10=110, MM=25, buffer=85
-    // leverageFactor=0.95, priceBuffer=floor(85/(5*0.95)*1e6)/1e6=17.894736
-    // liq=100-17.894736=82.105264
+    // closedSize=3, realizedPnl=3*(95-105)*(-1)=30
+    // oldPnl=-3*(100-105)=15, newPnl=5*(100-95)=25
+    // pnlDiff=30+25-15=40, equityAdj=100+40=140, MM=25, buffer=115
+    // leverageFactor=0.95, priceBuffer=floor(115/(5*0.95)*1e6)/1e6=24.210526
+    // liq=100-24.210526=75.789474
     const result = calculateLiquidationPrice(
       makeInput({
         positions: [{ marketAddr: "0xBTC", size: -3, entryPrice: 105 }],
@@ -101,17 +103,18 @@ describe("calculateLiquidationPrice", () => {
         executionPrice: 95,
       }),
     );
-    expect(result).toBeCloseTo(82.105264, 5);
+    expect(result).toBeCloseTo(75.789474, 5);
   });
 
   // --- Partial reduction ---
 
   it("keeps original entry price for partial reduction", () => {
     // Existing +10 @90, order -3 @110 → net +7, entry stays 90 (not 110)
-    // oldPnl=10*(100-90)=100, newPnl=7*(100-90)=70, pnlDiff=-30
-    // equityAdj=100-30=70, MM=7*100*(1/20)=35, buffer=35
-    // leverageFactor=0.95, priceBuffer=floor(35/(7*0.95)*1e6)/1e6=5.263157
-    // liq=100-5.263157=94.736843
+    // closedSize=3, realizedPnl=3*(110-90)*1=60
+    // oldPnl=10*(100-90)=100, newPnl=7*(100-90)=70
+    // pnlDiff=60+70-100=30, equityAdj=100+30=130, MM=35, buffer=95
+    // leverageFactor=0.95, priceBuffer=floor(95/(7*0.95)*1e6)/1e6=14.285714
+    // liq=100-14.285714=85.714286
     const result = calculateLiquidationPrice(
       makeInput({
         positions: [{ marketAddr: "0xBTC", size: 10, entryPrice: 90 }],
@@ -119,11 +122,29 @@ describe("calculateLiquidationPrice", () => {
         executionPrice: 110,
       }),
     );
-    expect(result).toBeCloseTo(94.736843, 5);
+    expect(result).toBeCloseTo(85.714286, 5);
+  });
 
-    // If entry price were wrongly set to executionPrice (110), equity would go
-    // deeply negative and the function would return markPrice (100).
-    // The pinned value 94.736843 proves the original entry (90) was kept.
+  it("reduction at mark price is equity-neutral", () => {
+    // Existing +10 @90, order -3 @100 (mark), equity=100
+    // closedSize=3, realizedPnl=3*(100-90)*1=30
+    // oldPnl=10*(100-90)=100, newPnl=7*(100-90)=70
+    // pnlDiff=30+70-100=0, equityAdj=100 (unchanged)
+    // This should match orderSize=0 on a +7 @90 position with equity=100
+    const withOrder = calculateLiquidationPrice(
+      makeInput({
+        positions: [{ marketAddr: "0xBTC", size: 10, entryPrice: 90 }],
+        orderSize: -3,
+        executionPrice: 100,
+      }),
+    );
+    const withoutOrder = calculateLiquidationPrice(
+      makeInput({
+        positions: [{ marketAddr: "0xBTC", size: 7, entryPrice: 90 }],
+        orderSize: 0,
+      }),
+    );
+    expect(withOrder).toBe(withoutOrder);
   });
 
   // --- Error cases ---
