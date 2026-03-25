@@ -315,6 +315,23 @@ export class DecibelAdminDex extends BaseSDK {
     });
   }
 
+  async setMarketAllowlistOnly(marketName: string, allowlist: string[], reason?: string) {
+    const marketAddr = getMarketAddr(marketName, this.config.deployment.perpEngineGlobal);
+    return await this.sendTx({
+      function: `${this.config.deployment.package}::admin_apis::set_market_allowlist_only`,
+      typeArguments: [],
+      functionArguments: [marketAddr, allowlist, reason ?? null],
+    });
+  }
+
+  async addMarketModeGuardian(delegatedAdmin: string) {
+    return await this.sendTx({
+      function: `${this.config.deployment.package}::admin_apis::add_market_mode_guardian`,
+      typeArguments: [],
+      functionArguments: [delegatedAdmin],
+    });
+  }
+
   /**
    * Get the balance of USDC for an account
    * @param addr The account address to get the balance for
