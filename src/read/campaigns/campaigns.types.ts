@@ -70,4 +70,3 @@ export interface GetUserCampaignClaimsArgs {
   userAddress: string;
   campaignIds: number[];
 }
-
