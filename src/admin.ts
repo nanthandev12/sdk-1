@@ -256,6 +256,52 @@ export class DecibelAdminDex extends BaseSDK {
     });
   }
 
+  async registerMarketWithChainlinkBlendedOracle(
+    name: string,
+    szDecimals: number,
+    minSize: number,
+    lotSize: number,
+    tickerSize: number,
+    maxOpenInterest: number,
+    maxLeverage: number,
+    marginCallFeePct: number,
+    takerInNextBlock = true,
+    isIsolatedOnly = false,
+    sourceNames: string[],
+    chainlinkFeedIdBytesArray: number[][],
+    internalInitialPrices: number[],
+    weights: number[],
+    maxStalenessSecs: number,
+    chainlinkRescaleDecimals: number,
+    oraclesDeviationBps: number,
+    consecutiveDeviationCount: number,
+  ) {
+    return await this.sendTx({
+      function: `${this.config.deployment.package}::admin_apis::register_market_with_chainlink_blended_oracle`,
+      typeArguments: [],
+      functionArguments: [
+        name,
+        szDecimals,
+        minSize,
+        lotSize,
+        tickerSize,
+        maxOpenInterest,
+        maxLeverage,
+        marginCallFeePct,
+        takerInNextBlock,
+        isIsolatedOnly,
+        sourceNames,
+        chainlinkFeedIdBytesArray,
+        internalInitialPrices,
+        weights,
+        maxStalenessSecs,
+        chainlinkRescaleDecimals,
+        oraclesDeviationBps,
+        consecutiveDeviationCount,
+      ],
+    });
+  }
+
   async updateInternalOraclePrice(marketName: string, oraclePrice: number) {
     const marketAddr = getMarketAddr(marketName, this.config.deployment.perpEngineGlobal);
     return await this.sendTx({
