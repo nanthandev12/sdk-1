@@ -25,6 +25,7 @@ export const vaultSortKeyValues = [
   "sharpe_ratio",
   "weekly_win_rate",
   "max_drawdown",
+  "apr",
 ] as const;
 export type VaultSortKey = (typeof vaultSortKeyValues)[number];
 
@@ -61,6 +62,13 @@ export interface VaultSharePriceRequestArgs extends BaseRequestArgs {
 }
 
 /**
+ * Arguments for fetching max synchronous (instant) redemption amount for a vault
+ */
+export interface MaxSynchronousRedemptionRequestArgs {
+  vaultAddress: string;
+}
+
+/**
  * Schema for a vault in the protocol
  * Represents both protocol-wide vaults and user-managed vaults
  */
@@ -78,6 +86,8 @@ export const VaultSchema = z.object({
   /** Net deposits (total contributions - total settled redemptions) in USDC */
   net_deposits: z.number().nullable(),
   all_time_return: z.number().nullable(),
+  /** Annualized percentage return (avg daily share-price yield × 365). Null if < 14 days of data. */
+  apr: z.number().nullable(),
   past_month_return: z.number().nullable(),
   sharpe_ratio: z.number().nullable(),
   max_drawdown: z.number().nullable(),
@@ -114,6 +124,9 @@ export const UserOwnedVaultSchema = z.object({
   age_days: z.number(),
   num_managers: z.number(),
   tvl: z.number().nullable(),
+  /** Share-price-based time-weighted return percentage since inception */
+  all_time_return: z.number().nullable(),
+  /** Annualized percentage return (avg daily share-price yield × 365). Null if < 14 days of data. */
   apr: z.number().nullable(),
   manager_equity: z.number().nullable(),
   manager_stake: z.number().nullable(),

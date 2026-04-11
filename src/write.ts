@@ -282,6 +282,18 @@ export class DecibelWriteDex extends BaseSDK {
     );
   }
 
+  async withdrawNonCollateral(assetAddr: string, amount: number, subaccountAddr?: string) {
+    return await this.sendSubaccountTx(
+      (subaccountAddr) =>
+        this.sendTx({
+          function: `${this.config.deployment.package}::dex_accounts_entry::withdraw_from_non_collateral`,
+          typeArguments: [],
+          functionArguments: [subaccountAddr, assetAddr, amount],
+        }),
+      subaccountAddr,
+    );
+  }
+
   async configureUserSettingsForMarket({
     marketAddr,
     subaccountAddr,
@@ -831,6 +843,7 @@ export class DecibelWriteDex extends BaseSDK {
     tpSize,
     subaccountAddr,
     accountOverride,
+    tickSize,
   }: {
     marketAddr: string;
     prevOrderId: number | string;
@@ -839,7 +852,17 @@ export class DecibelWriteDex extends BaseSDK {
     tpSize?: number;
     subaccountAddr?: string;
     accountOverride?: Account;
+    tickSize?: number;
   }) {
+    const roundedTpTriggerPrice =
+      tpTriggerPrice !== undefined && tickSize
+        ? roundToTickSize(tpTriggerPrice, tickSize)
+        : tpTriggerPrice;
+    const roundedTpLimitPrice =
+      tpLimitPrice !== undefined && tickSize
+        ? roundToTickSize(tpLimitPrice, tickSize)
+        : tpLimitPrice;
+
     return await this.sendSubaccountTx(
       (subaccountAddr) =>
         this.sendTx(
@@ -850,8 +873,8 @@ export class DecibelWriteDex extends BaseSDK {
               subaccountAddr,
               BigInt(prevOrderId.toString()),
               marketAddr,
-              tpTriggerPrice,
-              tpLimitPrice,
+              roundedTpTriggerPrice,
+              roundedTpLimitPrice,
               tpSize,
             ],
           },
@@ -872,6 +895,7 @@ export class DecibelWriteDex extends BaseSDK {
     slSize,
     subaccountAddr,
     accountOverride,
+    tickSize,
   }: {
     marketAddr: string;
     prevOrderId: number | string;
@@ -880,7 +904,17 @@ export class DecibelWriteDex extends BaseSDK {
     slSize?: number;
     subaccountAddr?: string;
     accountOverride?: Account;
+    tickSize?: number;
   }) {
+    const roundedSlTriggerPrice =
+      slTriggerPrice !== undefined && tickSize
+        ? roundToTickSize(slTriggerPrice, tickSize)
+        : slTriggerPrice;
+    const roundedSlLimitPrice =
+      slLimitPrice !== undefined && tickSize
+        ? roundToTickSize(slLimitPrice, tickSize)
+        : slLimitPrice;
+
     return await this.sendSubaccountTx(
       (subaccountAddr) =>
         this.sendTx(
@@ -891,8 +925,8 @@ export class DecibelWriteDex extends BaseSDK {
               subaccountAddr,
               BigInt(prevOrderId.toString()),
               marketAddr,
-              slTriggerPrice,
-              slLimitPrice,
+              roundedSlTriggerPrice,
+              roundedSlLimitPrice,
               slSize,
             ],
           },
@@ -1312,5 +1346,17 @@ export class DecibelWriteDex extends BaseSDK {
         }),
       subaccountAddr,
     );
+  }
+
+  /**
+   * Claim reward from a campaign by ID. The signer must have an allocation in the campaign.
+   * @param campaignId The numeric ID of the campaign to claim from
+   */
+  async claimCampaignReward(campaignId: number) {
+    return await this.sendTx({
+      function: `${this.config.deployment.campaignPackage}::campaign_manager::claim_by_id`,
+      typeArguments: [],
+      functionArguments: [campaignId],
+    });
   }
 }

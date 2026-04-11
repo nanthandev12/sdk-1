@@ -1,5 +1,6 @@
 import { BaseReader } from "../base-reader";
 import {
+  MaxSynchronousRedemptionRequestArgs,
   PublicVaultsRequestArgs,
   UserOwnedVaultsRequestArgs,
   UserOwnedVaultsResponseSchema,
@@ -116,5 +117,23 @@ export class VaultsReader extends BaseReader {
     // Using BigInt for precision, then converting to number
     // Note: This may lose precision for very large numbers
     return Number(navValue) / Number(sharesValue);
+  }
+
+  /**
+   * Get the maximum amount that can be synchronously (instantly) redeemed from a vault.
+   * Returns 0 if async redemptions are pending (sync not allowed).
+   * @param args The arguments containing the vault address
+   * @returns The max instant redemption amount in USDC (converted from chain units)
+   */
+  async getMaxSynchronousRedemption({ vaultAddress }: MaxSynchronousRedemptionRequestArgs) {
+    const [result] = await this.deps.aptos.view<[string]>({
+      payload: {
+        function: `${this.deps.config.deployment.package}::vault_api::get_max_synchronous_redemption`,
+        typeArguments: [],
+        functionArguments: [vaultAddress],
+      },
+    });
+
+    return Number(BigInt(result)) / 1e6;
   }
 }
